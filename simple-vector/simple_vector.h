@@ -88,12 +88,14 @@ public:
     } 
 
     // перемещение
-    SimpleVector& operator=(SimpleVector&& rhs) {
-        if (this != &rhs) {
-            swap(rhs);
-        }
-        return *this;
-    }  
+    SimpleVector& operator=(SimpleVector&& rhs) noexcept {
+    if (this != &rhs) {
+        data_ = std::move(rhs.data_);
+        size_ = std::move(rhs.size_);
+        capacity_ = std::move(rhs.capacity_);
+    }
+    return *this;
+}
     
     // Возвращает количество элементов в массиве
     size_t GetSize() const noexcept {
@@ -112,11 +114,13 @@ public:
 
     // Возвращает ссылку на элемент с индексом index
     Type& operator[](size_t index) noexcept {
+        assert(index < size_);
         return data_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
     const Type& operator[](size_t index) const noexcept {
+        assert(index < size_);
         return data_[index];
     }
 
@@ -124,7 +128,7 @@ public:
     // Выбрасывает исключение std::out_of_range, если index >= size
     Type& At(size_t index) {
         if (index >= size_) {
-            throw std::out_of_range("size <= index");
+            throw std::out_of_range("index out of range");
         }
         return data_[index];
     }
@@ -133,7 +137,7 @@ public:
     // Выбрасывает исключение std::out_of_range, если index >= size
     const Type& At(size_t index) const {
         if (index >= size_) {
-            throw std::out_of_range("size <= index");
+            throw std::out_of_range("index out of range");
         }
         return data_[index];
     }
@@ -158,10 +162,10 @@ public:
     void Resize(size_t new_size) {
         if (new_size <= size_) {
             size_ = new_size;
-        } else if (new_size > size_ && new_size <= capacity_) {
+        } else if (new_size <= capacity_) {
             std::generate(data_.Get() + size_, data_.Get() + new_size, [](){return Type();});
             size_ = new_size;
-        } else if (new_size > size_ && new_size > capacity_) {
+        } else {
             size_t new_capacity = std::max(new_size, capacity_ * 2);
             ArrayPtr<Type> new_data(new_capacity);
             std::move(data_.Get(), data_.Get() + size_, new_data.Get());
@@ -172,21 +176,21 @@ public:
         }
     }
     
-    // копирование
-    // Добавляет элемент в конец вектора
-    // При нехватке места увеличивает вдвое вместимость вектора
-    void PushBack(const Type& item) {
-        if (size_ == capacity_) {
-            size_t new_capacity = (capacity_ == 0 ? 1 : capacity_ * 2);
-            ArrayPtr<Type> new_data(new_capacity);
-            std::copy(data_.Get(), data_.Get() + size_, new_data.Get());
-            *(new_data.Get() + size_) = item;
-            data_.swap(new_data);
-            capacity_ = new_capacity;
-            ++size_;
-        } else {
-            *(data_.Get() + size_) = item;
-            ++size_;
+    // копирование 
+    // Добавляет элемент в конец вектора 
+    // При нехватке места увеличивает вдвое вместимость вектора 
+    void PushBack(const Type& item) { 
+        if (size_ == capacity_) { 
+            size_t new_capacity = (capacity_ == 0 ? 1 : capacity_ * 2); 
+            ArrayPtr<Type> new_data(new_capacity); 
+            std::move(data_.Get(), data_.Get() + size_, new_data.Get());
+            *(new_data.Get() + size_) = std::move(item); 
+            data_.swap(new_data); 
+            capacity_ = new_capacity; 
+            ++size_; 
+        } else { 
+            *(data_.Get() + size_) = std::move(item);
+            ++size_; 
         }
     }
     
